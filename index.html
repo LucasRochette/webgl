@@ -1,0 +1,532 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>three.js webgl - collada</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#777;
+				padding:0;
+				margin:0;
+				overflow:hidden;
+			}
+			#info {
+				position: absolute;
+				top: 0px;
+				width: 100%;
+				color: #ffffff;
+				padding: 5px;
+				font-family:Monospace;
+				font-size:13px;
+				text-align:center;
+			}
+			a {
+				color: #ffffff;
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+		<div id="info">
+			<a href="https://threejs.org" target="_blank" rel="noopener">three.js</a> collada loader
+			| Elf Girl by <a href="https://sketchfab.com/yellow09" target="_blank" rel="noopener">halloween</a> is licensed under <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC Attribution</a>
+		</div>
+
+		<script src="build/three.js"></script>
+
+		<script src="examples/js/loaders/ColladaLoader.js"></script>
+		<script src="examples/js/WebGL.js"></script>
+		<script src="examples/js/controls/OrbitControls.js"></script>
+		<script src="examples/js/controls/FirstPersonControls.js"></script>
+		<script src="examples/js/libs/dat.gui.min.js"></script>
+		<script src="examples/js/libs/stats.min.js"></script>
+
+		<script>
+
+			if ( WEBGL.isWebGLAvailable() === false ) {
+				document.body.appendChild( WEBGL.getWebGLErrorMessage() );
+			}
+
+			var container, stats, clock;
+			var camera, scene, rendere;
+			var tree, castle, porte, lion;
+			var mesh;
+            var audioLoader;
+			var mixers = {}; 
+			init();
+			animate();
+			function init() {
+
+				//var overlay = document.getElementById( 'overlay' );
+				//overlay.remove();
+				
+				
+				
+
+				container = document.getElementById( 'container' );
+
+				camera = new THREE.PerspectiveCamera( 45, window.innerWidth / window.innerHeight, 0.1, 2000 );
+				camera.position.set( 18, 5, 110 );
+				camera.lookAt( 50, 5, 50 );
+
+				var listener = new THREE.AudioListener();
+				camera.add( listener );
+
+
+				scene = new THREE.Scene();
+				clock = new THREE.Clock();
+				audioLoader = new THREE.AudioLoader();
+
+
+				renderer = new THREE.WebGLRenderer();
+				renderer.setPixelRatio( window.devicePixelRatio );
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				container.appendChild( renderer.domElement );
+				renderer.shadowMap.enabled = true;
+				renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+				renderer.gammaInput = true;
+				renderer.gammaOutput = true;
+
+
+				controls = new THREE.FirstPersonControls( camera, renderer.domElement );
+				controls.movementSpeed = 20;
+				controls.lookSpeed = 0.15;
+				controls.lookVertical = true;
+
+			
+			// Sol de la scène
+
+				ground = new THREE.Mesh(
+				new THREE.PlaneBufferGeometry( 2000, 2000 ),
+				new THREE.MeshPhongMaterial({map : Mat = new THREE.TextureLoader().load( "grassdirt-small.png" ), dithering: true}));
+				Mat.wrapS = THREE.RepeatWrapping;
+				Mat.wrapT = THREE.RepeatWrapping;
+				Mat.repeat.set(50,50);
+				ground.position.set( 0, 0, 0 );
+				ground.rotation.x = - Math.PI * 0.5;
+				ground.receiveShadow = true;
+				scene.add( ground );
+
+
+
+
+         // cube
+          var cube = new THREE.CubeGeometry(1800, 1800, 1800);
+
+
+          var cubeMaterials = [
+          	// back side
+          	new THREE.MeshBasicMaterial({
+          		map: new THREE.TextureLoader().load('Textures/skybox_left.png'),
+          		side: THREE.DoubleSide
+          	}),
+          	// front side
+          	new THREE.MeshBasicMaterial({
+          		map: new THREE.TextureLoader().load('Textures/skybox_right.png'),
+          		side: THREE.DoubleSide
+          	}),
+          	// Top side
+          	new THREE.MeshBasicMaterial({
+          		map: new THREE.TextureLoader().load('Textures/skybox_top.png'),
+          		side: THREE.DoubleSide
+          	}),
+          	// Bottom side
+          	new THREE.MeshBasicMaterial({
+          		map: new THREE.TextureLoader().load('Textures/skybox_bottom.png'),
+          		side: THREE.DoubleSide
+          	}),
+          	// right side
+          	new THREE.MeshBasicMaterial({
+          		map: new THREE.TextureLoader().load('Textures/skybox_back.png'),
+          		side: THREE.DoubleSide
+          	}),
+          	// left side
+          	new THREE.MeshBasicMaterial({
+          		map: new THREE.TextureLoader().load('Textures/skybox_front.png'),
+          		side: THREE.DoubleSide
+          	})
+          ];
+
+          //add cube & materials
+          var cubeMaterial = new THREE.MeshFaceMaterial(cubeMaterials);
+          var mesh = new THREE.Mesh(cube, cubeMaterial);
+          mesh.position.y = 500;
+          scene.add(mesh);
+
+
+
+
+
+
+
+
+
+
+
+
+
+							var colladaReady = function ( collada ) {
+
+							dae = collada.scene;
+							skin = collada.skins[ 0 ];
+
+							//dae.scale.x = dae.scale.y = dae.scale.z = 0.002;
+							//dae.rotation.x = -Math.PI/2;
+							dae.updateMatrix();
+
+							scene.addObject( dae );
+
+						}
+
+
+
+
+
+
+
+
+
+
+				// loading manager
+				var loadingManager = new THREE.LoadingManager( function () {
+					scene.add(tree);
+					scene.add(castle);
+					scene.add(porte);
+				} );
+
+				// collada
+				var loader = new THREE.ColladaLoader( loadingManager );
+				loader.load( 'Big_DoorDone.dae', function ( collada ) {
+					porte = collada.scene;
+					porte.position.set(18,5,80)
+                });
+
+
+/*
+                var TreeGroup = new THREE.Group();
+                var fuck;
+				var loader2 = new THREE.ColladaLoader( loadingManager );
+                loader2.load('plant asset.dae', function (colladaReady) {
+				var tree = colladaReady.scene;
+
+					
+
+					for(var i=15; i<=100; i=i+10)
+					{
+					for (var j=80; j<100 ; j=j+10)
+					{
+
+                        var newTree = new THREE.Mesh(tree.children[0].geometry, tree.children[0].material);
+
+ 
+
+
+
+                        newTree.position.set(i, 0, j);
+						newTree.scale.set(1, 5, 1);
+						scene.add(newTree);
+						
+
+					
+					}
+				}
+
+
+
+
+
+
+
+					window.referenceModel = tree.children;
+                    console.log(tree.children);
+					console.log(tree.children.length);
+                    fuck = tree.children;
+					//scene.add(tree);
+
+
+
+
+
+
+
+
+
+					
+				} );
+				                    //scene.add(TreeGroup);
+
+								       console.log("////////////// affichage de fuck /////////////");
+				                    console.log(fuck);
+
+				
+				var group = new THREE.Group();
+
+
+
+
+		for(var i=15; i<=100; i=i+10)
+				{
+					for (var j=80; j<100 ; j=j+10)
+					{
+					
+ 
+						var i = 0,
+                        while (i < fuck.length)
+                        {
+ 
+							var clone = new THREE.Mesh( fuck[i].geometry, fuck[i].material );
+
+ 
+							// anding a clone to the group
+							group.add(clone);
+ 
+							i += 1;
+						}
+ 
+
+
+
+					 var refObject = window.referenceModel;
+						var clone = new THREE.Mesh( refObject.geometry, refObject.material );
+						clone.position.set(i,0,j);
+						scene.add( clone );
+						
+
+					
+					}
+				}
+	
+ 					// adding the group to the scene
+                        scene.add(group);
+		*/				
+
+				var loader2 = new THREE.ColladaLoader( loadingManager );
+				loader2.load( 'plant asset.dae', function ( collada ) {
+					var tree = collada.scene;
+					tree.position.set(15,0,80);
+					scene.add(tree);
+				} );
+				
+								var loader2 = new THREE.ColladaLoader( loadingManager );
+				loader2.load( 'plant asset.dae', function ( collada ) {
+					var tree = collada.scene;
+					tree.position.set(35,0,80);
+					scene.add(tree);
+				} );
+				
+
+				// Configuration du lion
+
+				var soundLion = new THREE.PositionalAudio( listener );
+
+				audioLoader.load( 'rugissement.mp3', function ( buffer ) {
+					soundLion.setBuffer( buffer );
+					soundLion.setRefDistance( 1 );
+					soundLion.setLoop( true );
+					soundLion.setVolume( 1 );
+					soundLion.play();
+				} );
+
+				var loader3 = new THREE.ColladaLoader( loadingManager );
+				loader3.load( 'lion_collada.dae', function ( collada ) {
+                    var lion = collada.scene;
+                    lion.position.set( 10, 0, 50 );
+					lion.add( soundLion );
+					scene.add(lion);
+                } );
+				var loader3 = new THREE.ColladaLoader( loadingManager );
+				loader3.load( 'lion_collada.dae', function ( collada ) {
+                    var lion = collada.scene;
+                    lion.position.set( 25, 0, 50 );
+					lion.add( soundLion );
+					lion.rotation.z = Math.PI;
+					scene.add(lion);
+                } );
+
+ 				//configuration du chateau
+				var soundCastle = new THREE.PositionalAudio( listener );
+				var loader4 = new THREE.ColladaLoader( loadingManager );
+
+				audioLoader.load( 'chateau.mp3', function ( buffer ) {
+					soundCastle.setBuffer( buffer );
+					soundCastle.setRefDistance( 5 );
+					soundCastle.setLoop( true );
+					soundCastle.setVolume( 5 );
+					soundCastle.play();
+				} );
+
+				loader4.load( 'castle_collada.dae', function ( collada ) {
+					castle = collada.scene;
+					castle.position.set(0,-5,0)
+					castle.add( soundCastle );
+                });
+
+
+
+
+
+
+
+
+				//zombies
+
+				 var boom, boom2, boom3, boom4;
+                var loader3 = new THREE.ColladaLoader();
+                var loader4 = new THREE.ColladaLoader();
+                var loader5 = new THREE.ColladaLoader();
+                var loader6 = new THREE.ColladaLoader();
+                loader3.load( 'Walking.dae', function ( collada ) {
+
+                        var animations = collada.animations;
+
+                        boom = collada.scene;
+                        boom.position.set(0,0,120);
+                        boom.scale.set(0.05, 0.05, 0.05);
+                        boom.rotation.y =  Math.PI *0.9 ;
+
+                        boom.traverse( function ( node ) {
+                            if ( node.isMesh ) {
+                                node.frustumCulled = false;
+                                node.castShadow = true;
+                            }
+                        } );
+
+
+                        mixers[0] = new THREE.AnimationMixer( boom );
+                        var action = mixers[0].clipAction( animations[ 0 ] ).play();
+                        scene.add( boom );
+                });
+                loader4.load( 'Walking.dae', function ( collada ) {
+
+                        var animations = collada.animations;
+
+                        boom2 = collada.scene;
+                        boom2.position.set(10,0,120);
+                        boom2.scale.set(0.05, 0.05, 0.05);
+                        boom2.rotation.y =  Math.PI ;
+
+                        boom2.traverse( function ( node ) {
+                            if ( node.isMesh ) {
+                                node.frustumCulled = false;
+                                node.castShadow = true;
+                            }
+                        } );
+
+
+                        mixers[1] = new THREE.AnimationMixer( boom2 );
+                        var action = mixers[1].clipAction( animations[ 0 ] ).play();
+                        scene.add( boom2 );
+                }); 
+
+				 loader5.load( 'Walking.dae', function ( collada ) {
+
+                        var animations = collada.animations;
+
+                        boom3 = collada.scene;
+                        boom3.position.set(20,0,120);
+                        boom3.scale.set(0.05, 0.05, 0.05);
+                        boom3.rotation.y =  Math.PI ;
+
+                        boom3.traverse( function ( node ) {
+                            if ( node.isMesh ) {
+                                node.frustumCulled = false;
+                                node.castShadow = true;
+                            }
+                        } );
+
+
+                        mixers[2] = new THREE.AnimationMixer( boom3 );
+                        var action = mixers[2].clipAction( animations[ 0 ] ).play();
+                        scene.add( boom3 );
+                });
+                loader6.load( 'Walking.dae', function ( collada ) {
+
+                        var animations = collada.animations;
+
+                        boom4 = collada.scene;
+                        boom4.position.set(30,0,115);
+                        boom4.scale.set(0.05, 0.05, 0.05);
+                        boom4.rotation.y =   Math.PI * 1.1 ;
+
+                        boom4.traverse( function ( node ) {
+                            if ( node.isMesh ) {
+                                node.frustumCulled = false;
+                                node.castShadow = true;
+                            }
+                        } );
+
+
+                        mixers[3] = new THREE.AnimationMixer( boom4 );
+                        var action = mixers[3].clipAction( animations[ 0 ] ).play();
+                        scene.add( boom4 );
+                }); 
+
+
+ 
+				// Audio général
+
+				soundGeneral = new THREE.Audio( listener );
+
+				audioLoader.load( 'oiseaux.mp3', function ( buffer ) {
+					soundGeneral.setBuffer( buffer );
+					soundGeneral.setLoop( true );
+					soundGeneral.setVolume( 0.06 );
+					soundGeneral.play();
+				} );
+
+
+				// Configuration de la lumière et de l'ombre
+
+                spotLight = new THREE.SpotLight( 0xffffff, 2 );
+                spotLight.position.set( 100, 100, 0 );
+                spotLight.angle = 10;
+                spotLight.decay = 2;
+                spotLight.distance = 2000;
+                spotLight.castShadow = true;
+                spotLight.shadow.mapSize.width = 1024;
+                spotLight.shadow.mapSize.height = 1024;
+                spotLight.shadow.camera.near = 10;
+                spotLight.shadow.camera.far = 200;
+                scene.add( spotLight );
+				//var ambientLight = new THREE.AmbientLight( 0xcccccc, 0.4 );
+				//scene.add( ambientLight );
+
+				stats = new Stats();
+				container.appendChild( stats.dom );
+
+
+				window.addEventListener( 'resize', onWindowResize, false );
+			}
+			function onWindowResize() {
+				camera.aspect = window.innerWidth / window.innerHeight;
+				camera.updateProjectionMatrix();
+				renderer.setSize( window.innerWidth, window.innerHeight );
+				controls.handleResize();
+			}
+
+			function animate() {
+				requestAnimationFrame( animate );
+				render();
+				stats.update();
+			}
+
+			function render() {
+                var delta = clock.getDelta();
+
+				var i;
+                for(i =0;i<=3;i++)
+                {
+                    if ( mixers[i] !== undefined ) {
+                        mixers[i].update( delta );
+                    }
+                } 
+
+
+				controls.update( delta );
+                renderer.render(scene, camera);
+			}
+		</script>
+	</body>
+</html>
